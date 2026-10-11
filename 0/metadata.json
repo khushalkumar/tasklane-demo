@@ -1,0 +1,50 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4NGP8171K9MSW1N78X8PB19",
+  "session_id": "01a12b08-9646-7302-b9ee-dd745d0e40d6",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-11T12:59:39.199335Z",
+  "branch": "promise-ledger/p-014-rc-p-014-infra-storage-tf",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [
+    "infra/storage.tf",
+    "tests/test_fixture.py"
+  ],
+  "agent": "Codex",
+  "model": "gpt-5.6-sol",
+  "turn_id": "d511f67a7103",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 33299,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 409596,
+    "output_tokens": 5627,
+    "api_call_count": 16,
+    "subagent_tokens_complete": true
+  },
+  "session_metrics": {
+    "turn_count": 1
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-11T12:59:39.189446Z",
+    "agent_lines": 11,
+    "agent_removed": 3,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 11,
+    "total_lines_changed": 14,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}

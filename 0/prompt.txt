@@ -1,0 +1,7 @@
+Implement one narrow contractual remediation in this isolated worktree. Change only files needed for this root cause, add or update a regression test, run the repository test and lint commands, and do not commit, push, or open a PR.
+
+Promise: P-014
+Contract: Following termination of the Services, Tasklane will delete Northwind's customer personal data within 30 days. Deletion includes application records, audit events, exports, attachments, and backups controlled by Tasklane.
+Root cause: Configured backup retention in infra/storage.tf is 90 days, which exceeds the contractual maximum of 30 days for deletion of Northwind customer data after service termination.
+Required file: infra/storage.tf
+Fix goal: Set the backup data retention in infra/storage.tf to no more than 30 days for Northwind customer data backups.
