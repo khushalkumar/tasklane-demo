@@ -3,6 +3,7 @@ from pathlib import Path
 
 from tasklane.db import connect, initialize_database, seed_demo_data
 from tasklane.jobs.purge_tenant import purge_expired_tenants
+from tasklane.seed import seed_database
 
 REPOSITORY_ROOT = Path(__file__).parents[1]
 
@@ -64,3 +65,12 @@ def test_database_snapshots_have_a_compliant_30_day_retention_fallback():
     database = (REPOSITORY_ROOT / "infra" / "database.tf").read_text()
 
     assert "backup_retention_period = 30" in database
+
+
+def test_seed_database_builds_a_fresh_demo_database(tmp_path):
+    database = tmp_path / "tasklane.db"
+
+    seed_database(database)
+
+    with connect(database) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM tenants").fetchone()[0] == 40
