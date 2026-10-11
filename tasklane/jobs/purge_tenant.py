@@ -31,8 +31,14 @@ def purge_expired_tenants(
             return PurgeResult(tenant_ids=())
 
         placeholders = ", ".join("?" for _ in tenant_ids)
-        # This legacy hard-coded list deliberately omits audit_events.
-        for table in ("comments", "attachments", "invites", "tasks", "users"):
+        for table in (
+            "comments",
+            "attachments",
+            "invites",
+            "tasks",
+            "users",
+            "audit_events",
+        ):
             connection.execute(
                 f"DELETE FROM {table} WHERE tenant_id IN ({placeholders})", tenant_ids
             )

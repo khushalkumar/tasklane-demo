@@ -24,7 +24,7 @@ def test_seed_has_two_expired_tenants_and_1284_audit_events(tmp_path):
     assert audit_events == 1_284
 
 
-def test_purge_leaves_the_planted_audit_event_violation(tmp_path):
+def test_purge_deletes_audit_events_with_other_customer_data(tmp_path):
     database = tmp_path / "tasklane.db"
     initialize_database(database)
     seed_demo_data(database)
@@ -52,7 +52,7 @@ def test_purge_leaves_the_planted_audit_event_violation(tmp_path):
         "attachments": 0,
         "invites": 0,
     }
-    assert remaining_audit_events == 1_284
+    assert remaining_audit_events == 0
 
 
 def test_terraform_contains_the_planted_retention_and_residency_defects():
