@@ -1,0 +1,7 @@
+Implement one narrow contractual remediation in this isolated worktree. Change only files needed for this root cause, add or update a regression test, run the repository test and lint commands, and do not commit, push, or open a PR.
+
+Promise: P-014
+Contract: Following termination of the Services, Tasklane will delete Northwind's customer personal data within 30 days. Deletion includes application records, audit events, exports, attachments, and backups controlled by Tasklane.
+Root cause: purge_expired_tenants does not delete audit_events for terminated tenants, causing personal data to persist past the contractually required 30-day post-termination deadline.
+Required file: tasklane/jobs/purge_tenant.py
+Fix goal: Update purge_expired_tenants to delete audit_events rows associated with expired tenants alongside other tenant tables.
