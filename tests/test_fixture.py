@@ -58,3 +58,9 @@ def test_terraform_contains_the_planted_retention_and_residency_defects():
 
     assert 'region = "us-east-1"' in storage
     assert "days = 90" in storage
+
+
+def test_database_snapshots_have_a_compliant_30_day_retention_fallback():
+    database = (REPOSITORY_ROOT / "infra" / "database.tf").read_text()
+
+    assert "backup_retention_period = 30" in database
