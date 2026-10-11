@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "verification": {
+    "test_command": ["uv", "run", "pytest", "-q"],
+    "seed_command": ["uv", "run", "tasklane-seed", "{database}"],
+    "effect_commands": [
+      [
+        "uv",
+        "run",
+        "tasklane-purge",
+        "--database",
+        "{database}",
+        "--retention-days",
+        "30"
+      ]
+    ]
+  }
+}

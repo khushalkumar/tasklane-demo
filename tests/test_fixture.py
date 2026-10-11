@@ -2,7 +2,16 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from tasklane.db import connect, initialize_database, seed_demo_data
+from sqlalchemy import func, select
+
+from tasklane.db import (
+    TENANT_TABLES,
+    audit_events,
+    create_database_engine,
+    initialize_database,
+    seed_demo_data,
+    tenants,
+)
 from tasklane.jobs.purge_tenant import purge_expired_tenants
 from tasklane.seed import seed_database
 
@@ -14,14 +23,16 @@ def test_seed_has_two_expired_tenants_and_1284_audit_events(tmp_path):
     initialize_database(database)
     seed_demo_data(database)
 
-    with connect(database) as connection:
-        expired = connection.execute(
-            "SELECT COUNT(*) FROM tenants WHERE terminated_at IS NOT NULL"
-        ).fetchone()[0]
-        audit_events = connection.execute("SELECT COUNT(*) FROM audit_events").fetchone()[0]
+    with create_database_engine(database).connect() as connection:
+        expired = connection.scalar(
+            select(func.count())
+            .select_from(tenants)
+            .where(tenants.c.terminated_at.is_not(None))
+        )
+        event_count = connection.scalar(select(func.count()).select_from(audit_events))
 
     assert expired == 2
-    assert audit_events == 1_284
+    assert event_count == 1_284
 
 
 def test_purge_leaves_the_planted_audit_event_violation(tmp_path):
@@ -35,14 +46,14 @@ def test_purge_leaves_the_planted_audit_event_violation(tmp_path):
         retention_days=30,
     )
 
-    with connect(database) as connection:
+    with create_database_engine(database).connect() as connection:
         remaining_customer_rows = {
-            table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-            for table in ("users", "tasks", "comments", "attachments", "invites")
+            name: connection.scalar(select(func.count()).select_from(TENANT_TABLES[name]))
+            for name in ("users", "tasks", "comments", "attachments", "invites")
         }
-        remaining_audit_events = connection.execute(
-            "SELECT COUNT(*) FROM audit_events"
-        ).fetchone()[0]
+        remaining_audit_events = connection.scalar(
+            select(func.count()).select_from(audit_events)
+        )
 
     assert result.tenant_ids == ("tenant-expired-41", "tenant-expired-63")
     assert remaining_customer_rows == {
@@ -84,5 +95,5 @@ def test_seed_database_builds_a_fresh_demo_database(tmp_path):
 
     seed_database(database)
 
-    with connect(database) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM tenants").fetchone()[0] == 40
+    with create_database_engine(database).connect() as connection:
+        assert connection.scalar(select(func.count()).select_from(tenants)) == 40

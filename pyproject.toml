@@ -4,13 +4,21 @@ version = "0.1.0"
 description = "Fictional target SaaS for the Promise Ledger demo"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+  "fastapi>=0.118,<0.119",
+  "psycopg>=3.2,<4",
+  "sqlalchemy>=2.0,<3",
+  "uvicorn>=0.37,<0.38",
+]
 
 [project.scripts]
 tasklane-seed = "tasklane.seed:main"
+tasklane-api = "tasklane.api:main"
+tasklane-purge = "tasklane.purge:main"
 
 [dependency-groups]
 dev = [
+  "httpx>=0.28,<1",
   "pytest>=8.4,<9",
   "ruff>=0.12,<1",
 ]
