@@ -1,0 +1,14 @@
+{
+  "plans": {
+    "business": {
+      "sso": true
+    }
+  },
+  "availability": {
+    "monthly_target_percent": 99.9,
+    "service_credits": true
+  },
+  "security": {
+    "admin_mfa_required": true
+  }
+}

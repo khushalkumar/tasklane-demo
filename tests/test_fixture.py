@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -65,6 +66,17 @@ def test_database_snapshots_have_a_compliant_30_day_retention_fallback():
     database = (REPOSITORY_ROOT / "infra" / "database.tf").read_text()
 
     assert "backup_retention_period = 30" in database
+
+
+def test_compliance_config_proves_the_four_msa_commitments():
+    config = json.loads((REPOSITORY_ROOT / "config" / "compliance.json").read_text())
+
+    assert config["plans"]["business"]["sso"] is True
+    assert config["availability"]["monthly_target_percent"] == 99.9
+    assert config["availability"]["service_credits"] is True
+    assert config["security"]["admin_mfa_required"] is True
+    database = (REPOSITORY_ROOT / "infra" / "database.tf").read_text()
+    assert "storage_encrypted       = true" in database
 
 
 def test_seed_database_builds_a_fresh_demo_database(tmp_path):
