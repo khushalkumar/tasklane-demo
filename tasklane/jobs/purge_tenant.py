@@ -1,10 +1,12 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from sqlalchemy import delete, select
 
 from tasklane.db import TENANT_TABLES, create_database_engine, tenants
+
+RETENTION_DAYS = 7
 
 
 @dataclass(frozen=True)
@@ -28,9 +30,16 @@ def purge_expired_tenants(
         if not tenant_ids:
             return PurgeResult(tenant_ids=())
 
-        # This legacy hard-coded list deliberately omits audit_events.
-        for table_name in ("comments", "attachments", "invites", "tasks", "users"):
-            table = TENANT_TABLES[table_name]
+        for table in TENANT_TABLES.values():
             connection.execute(delete(table).where(table.c.tenant_id.in_(tenant_ids)))
 
     return PurgeResult(tenant_ids=tenant_ids)
+
+
+def run_purge_job(database: str | Path, *, now: datetime | None = None) -> PurgeResult:
+    """Run the recurring tenant purge with the contractual retention period."""
+    return purge_expired_tenants(
+        database,
+        now=now or datetime.now(UTC),
+        retention_days=RETENTION_DAYS,
+    )

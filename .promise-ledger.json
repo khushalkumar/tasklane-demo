@@ -9,9 +9,7 @@
         "run",
         "tasklane-purge",
         "--database",
-        "{database}",
-        "--retention-days",
-        "30"
+        "{database}"
       ]
     ]
   }
