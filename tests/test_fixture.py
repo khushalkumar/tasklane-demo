@@ -18,6 +18,21 @@ from tasklane.seed import seed_database
 REPOSITORY_ROOT = Path(__file__).parents[1]
 
 
+def test_contract_registry_keys_reference_existing_document_sections():
+    contracts = REPOSITORY_ROOT / "contracts"
+    registry = json.loads((contracts / "id_registry.json").read_text())
+
+    for key in registry:
+        parts = key.split("|")
+        assert len(parts) == 3, f"invalid promise registry key: {key}"
+        document, clause, _kind = parts
+        contract = contracts / document
+        assert contract.exists(), f"registry document does not exist: {document}"
+        assert f"## {clause} " in contract.read_text(), (
+            f"registry clause does not exist in {document}: {clause}"
+        )
+
+
 def test_seed_has_two_expired_tenants_and_1284_audit_events(tmp_path):
     database = tmp_path / "tasklane.db"
     initialize_database(database)
