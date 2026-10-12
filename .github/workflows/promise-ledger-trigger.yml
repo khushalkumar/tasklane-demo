@@ -1,0 +1,95 @@
+name: Trigger production Promise Ledger
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      trigger:
+        description: Trigger classification for a production verification run
+        required: true
+        default: deploy
+        type: choice
+        options:
+          - new_contract
+          - deploy
+          - infra_change
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tasklane-promise-ledger-trigger
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Classify the change
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REQUESTED_TRIGGER: ${{ inputs.trigger }}
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            trigger_kind="${REQUESTED_TRIGGER}"
+          else
+            if [[ "${BEFORE_SHA}" =~ ^0+$ ]]; then
+              changed_files="$(git diff-tree --no-commit-id --name-only -r "${CURRENT_SHA}")"
+            else
+              changed_files="$(git diff --name-only "${BEFORE_SHA}" "${CURRENT_SHA}")"
+            fi
+            if grep --quiet '^contracts/' <<< "${changed_files}"; then
+              trigger_kind="new_contract"
+            elif grep --quiet '^infra/' <<< "${changed_files}"; then
+              trigger_kind="infra_change"
+            else
+              trigger_kind="deploy"
+            fi
+          fi
+          echo "kind=${trigger_kind}" >> "${GITHUB_OUTPUT}"
+
+      - name: Start hosted Promise Ledger run
+        env:
+          SERVICE_URL: https://promise-ledger.onrender.com
+          TRIGGER_KIND: ${{ steps.classify.outputs.kind }}
+          TRIGGER_TOKEN: ${{ secrets.PROMISE_LEDGER_TRIGGER_TOKEN }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_REF: ${{ github.ref }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          payload="$(jq -n \
+            --arg source_repository "${SOURCE_REPOSITORY}" \
+            --arg ref "${SOURCE_REF}" \
+            --arg sha "${SOURCE_SHA}" \
+            '{source_repository: $source_repository, ref: $ref, sha: $sha}')"
+          for attempt in {1..20}; do
+            http_status="$(curl --silent --show-error \
+              --output response.json \
+              --write-out "%{http_code}" \
+              --request POST \
+              --header "Authorization: Bearer ${TRIGGER_TOKEN}" \
+              --header "Content-Type: application/json" \
+              --data "${payload}" \
+              "${SERVICE_URL}/api/triggers/${TRIGGER_KIND}")"
+            if [[ "${http_status}" == "202" ]]; then
+              cat response.json
+              exit 0
+            fi
+            if [[ "${http_status}" != "409" ]]; then
+              cat response.json >&2
+              exit 1
+            fi
+            echo "Another run is active; retrying trigger in 30 seconds."
+            sleep 30
+          done
+          echo "Timed out waiting for the active Promise Ledger run." >&2
+          exit 1

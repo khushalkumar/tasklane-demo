@@ -79,6 +79,20 @@ def test_database_snapshots_have_a_compliant_30_day_retention_fallback():
     assert "backup_retention_period = 30" in database
 
 
+def test_pushes_trigger_the_production_promise_ledger():
+    workflow = REPOSITORY_ROOT / ".github/workflows/promise-ledger-trigger.yml"
+
+    assert workflow.exists(), "production trigger workflow is missing"
+    source = workflow.read_text()
+    assert "new_contract" in source
+    assert "^contracts/" in source
+    assert "infra_change" in source
+    assert "deploy" in source
+    assert "/api/triggers/" in source
+    assert "PROMISE_LEDGER_TRIGGER_TOKEN" in source
+    assert '"409"' in source
+
+
 def test_compliance_config_proves_the_four_msa_commitments():
     config = json.loads((REPOSITORY_ROOT / "config" / "compliance.json").read_text())
 
