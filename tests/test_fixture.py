@@ -1,8 +1,8 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from tasklane.db import (
     TENANT_TABLES,
@@ -12,7 +12,7 @@ from tasklane.db import (
     seed_demo_data,
     tenants,
 )
-from tasklane.jobs.purge_tenant import purge_expired_tenants
+from tasklane.jobs.purge_tenant import purge_expired_tenants, run_purge_job
 from tasklane.seed import seed_database
 
 REPOSITORY_ROOT = Path(__file__).parents[1]
@@ -50,7 +50,7 @@ def test_seed_has_two_expired_tenants_and_1284_audit_events(tmp_path):
     assert event_count == 1_284
 
 
-def test_purge_leaves_the_planted_audit_event_violation(tmp_path):
+def test_purge_deletes_all_tenant_tables_for_expired_tenants(tmp_path):
     database = tmp_path / "tasklane.db"
     initialize_database(database)
     seed_demo_data(database)
@@ -58,27 +58,51 @@ def test_purge_leaves_the_planted_audit_event_violation(tmp_path):
     result = purge_expired_tenants(
         database,
         now=datetime(2026, 10, 11, 12, 0, tzinfo=UTC),
-        retention_days=30,
+        retention_days=7,
     )
 
     with create_database_engine(database).connect() as connection:
-        remaining_customer_rows = {
-            name: connection.scalar(select(func.count()).select_from(TENANT_TABLES[name]))
-            for name in ("users", "tasks", "comments", "attachments", "invites")
+        remaining_rows = {
+            name: connection.scalar(
+                select(func.count())
+                .select_from(table)
+                .where(table.c.tenant_id.in_(result.tenant_ids))
+            )
+            for name, table in TENANT_TABLES.items()
         }
-        remaining_audit_events = connection.scalar(
-            select(func.count()).select_from(audit_events)
-        )
 
     assert result.tenant_ids == ("tenant-expired-41", "tenant-expired-63")
-    assert remaining_customer_rows == {
-        "users": 0,
-        "tasks": 0,
-        "comments": 0,
-        "attachments": 0,
-        "invites": 0,
-    }
-    assert remaining_audit_events == 1_284
+    assert remaining_rows == {name: 0 for name in TENANT_TABLES}
+
+
+def test_purge_job_removes_rows_at_the_seven_day_deadline(tmp_path):
+    database = tmp_path / "tasklane.db"
+    initialize_database(database)
+    seed_demo_data(database)
+    now = datetime(2026, 10, 11, 12, 0, tzinfo=UTC)
+    tenant_id = "tenant-expired-41"
+    with create_database_engine(database).begin() as connection:
+        connection.execute(
+            update(tenants)
+            .where(tenants.c.id == tenant_id)
+            .values(terminated_at=now - timedelta(days=7))
+        )
+
+    result = run_purge_job(database, now=now)
+
+    verified_tables = ("attachments", "comments", "invites", "tasks", "users")
+    with create_database_engine(database).connect() as connection:
+        remaining_rows = {
+            name: connection.scalar(
+                select(func.count())
+                .select_from(TENANT_TABLES[name])
+                .where(TENANT_TABLES[name].c.tenant_id == tenant_id)
+            )
+            for name in verified_tables
+        }
+
+    assert tenant_id in result.tenant_ids
+    assert remaining_rows == {name: 0 for name in verified_tables}
 
 
 def test_terraform_contains_the_planted_retention_and_residency_defects():
