@@ -28,7 +28,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
     status = "Enabled"
 
     expiration {
-      days = 90
+      days = 7
     }
   }
 }

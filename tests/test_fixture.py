@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -81,11 +82,22 @@ def test_purge_leaves_the_planted_audit_event_violation(tmp_path):
     assert remaining_audit_events == 1_284
 
 
-def test_terraform_contains_the_planted_retention_and_residency_defects():
+def test_backup_lifecycle_retention_does_not_exceed_seven_days():
+    storage = (REPOSITORY_ROOT / "infra" / "storage.tf").read_text()
+
+    expiration_days = [
+        int(days)
+        for days in re.findall(r"expiration\s*\{\s*days\s*=\s*(\d+)\s*\}", storage)
+    ]
+
+    assert expiration_days, "backup lifecycle expiration is missing"
+    assert max(expiration_days) <= 7
+
+
+def test_terraform_contains_the_planted_residency_defect():
     storage = (REPOSITORY_ROOT / "infra" / "storage.tf").read_text()
 
     assert 'region = "us-east-1"' in storage
-    assert "days = 90" in storage
 
 
 def test_database_snapshots_have_a_compliant_30_day_retention_fallback():
